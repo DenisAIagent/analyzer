@@ -72,7 +72,7 @@ npm install
 
 3. Créez un fichier `.env` avec les variables suivantes :
 ```
-VITE_API_URL="http://localhost:3001"
+VITE_BACKEND_URL="http://localhost:3001"
 ```
 
 4. Démarrez l'application :
@@ -84,8 +84,17 @@ npm run dev
 
 ### Backend
 
-1. Déployez le dossier `backend` sur votre serveur
-2. Configurez les variables d'environnement
+1. Déployez le dossier `backend` sur votre serveur ou sur Railway
+2. Configurez les variables d'environnement suivantes sur Railway ou votre plateforme de déploiement :
+```
+API_GEMINI_URL="votre_clé_gemini"
+API_OPENAI_URL="votre_clé_openai"
+API_GOOGLEADS="votre_clé_google_ads"
+SERPAPI_KEY="votre_clé_serpapi"
+PORT=3001
+NODE_ENV=production
+CORS_ORIGIN="https://votre-frontend-url.com"
+```
 3. Lancez avec `npm start`
 
 ### Frontend
@@ -96,7 +105,27 @@ cd frontend
 npm run build
 ```
 
-2. Déployez le contenu du dossier `dist` sur votre serveur statique
+2. Déployez le contenu du dossier `dist` sur votre serveur statique ou sur Railway
+
+3. **IMPORTANT** : Configurez les variables d'environnement suivantes sur Railway ou votre plateforme de déploiement :
+```
+VITE_BACKEND_URL="https://votre-backend-url.com"
+```
+Cette étape est cruciale pour que le frontend puisse communiquer avec le backend. Sans cette configuration, les boutons et sélecteurs de l'interface ne fonctionneront pas correctement.
+
+## Déploiement sur Railway
+
+Pour déployer cette application sur Railway, suivez ces étapes spécifiques :
+
+1. **Backend** :
+   - Créez un nouveau service en pointant vers le dossier `/backend`
+   - Configurez toutes les variables d'environnement mentionnées ci-dessus
+   - Utilisez la commande de démarrage `npm start`
+
+2. **Frontend** :
+   - Créez un nouveau service en pointant vers le dossier `/frontend`
+   - Configurez la variable d'environnement `VITE_BACKEND_URL` avec l'URL complète de votre service backend déployé
+   - Utilisez la commande de build `npm run build` et la commande de démarrage pour servir les fichiers statiques
 
 ## Utilisation
 
@@ -110,3 +139,8 @@ npm run build
 - **Frontend** : React, TypeScript, Vite, Tailwind CSS
 - **Backend** : Node.js, Express
 - **APIs externes** : Google Ads, OpenAI, Gemini, SerpAPI (Google Trends)
+
+## Résolution des problèmes courants
+
+- **Les boutons et sélecteurs ne fonctionnent pas** : Vérifiez que la variable d'environnement `VITE_BACKEND_URL` est correctement configurée dans votre déploiement frontend et qu'elle pointe vers l'URL complète de votre backend.
+- **Erreur "No QueryClient set"** : Cette erreur est résolue dans la dernière version. Si elle persiste, vérifiez que vous utilisez la dernière version du code.
