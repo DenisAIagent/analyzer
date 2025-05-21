@@ -3,7 +3,7 @@
  * Permet de sélectionner ou saisir un CID Google Ads
  */
 
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import { useCampaignContext } from '../../contexts/CampaignContext';
 
 interface CIDSelectorProps {

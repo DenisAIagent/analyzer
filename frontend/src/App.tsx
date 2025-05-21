@@ -21,7 +21,7 @@ const App: React.FC = () => {
   useCIDHeader();
   
   const { cid, selectedCampaignId, setSelectedCampaignId } = useCampaignContext();
-  const { data: campaigns, isLoading } = useCampaigns();
+  const { data: campaigns } = useCampaigns();
   
   // État pour le type de campagne sélectionnée
   const [campaignType, setCampaignType] = useState<string>('');

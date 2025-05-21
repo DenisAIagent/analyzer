@@ -4,7 +4,6 @@
  */
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 
 // Types pour les analyses
 interface AnalysisData {
@@ -34,38 +33,6 @@ export const useCampaignAnalysis = (
       setError(null);
 
       try {
-        let endpoint = '';
-        
-        // Déterminer l'endpoint en fonction du type d'agent
-        switch (agentType) {
-          case 'openai':
-            endpoint = `/api/openai/analyze?campaignId=${campaignId}&period=${period}&isVideo=${isVideo}`;
-            break;
-          case 'gemini':
-            endpoint = `/api/google-ai/analyze?campaignId=${campaignId}&period=${period}&isVideo=${isVideo}`;
-            break;
-          case 'manager':
-            endpoint = `/api/ai/manager/analyze?campaignId=${campaignId}&period=${period}&isVideo=${isVideo}`;
-            break;
-          case 'stratege':
-            endpoint = `/api/ai/stratege/analyze?campaignId=${campaignId}&period=${period}&isVideo=${isVideo}`;
-            break;
-          case 'budget':
-            endpoint = `/api/ai/budget/analyze?campaignId=${campaignId}&period=${period}&isVideo=${isVideo}`;
-            break;
-          case 'audience':
-            endpoint = `/api/ai/audience/analyze?campaignId=${campaignId}&period=${period}&isVideo=${isVideo}`;
-            break;
-          case 'concurrent':
-            endpoint = `/api/ai/concurrent/analyze?campaignId=${campaignId}&period=${period}&isVideo=${isVideo}`;
-            break;
-          case 'predictif':
-            endpoint = `/api/ai/predictif/analyze?campaignId=${campaignId}&period=${period}&isVideo=${isVideo}`;
-            break;
-          default:
-            endpoint = `/api/ai/manager/analyze?campaignId=${campaignId}&period=${period}&isVideo=${isVideo}`;
-        }
-
         // Simuler une réponse pour le développement
         // Dans un environnement de production, cette partie serait remplacée par un vrai appel API
         setTimeout(() => {

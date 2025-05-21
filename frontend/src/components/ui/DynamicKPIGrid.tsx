@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { useCampaignContext } from '../../contexts/CampaignContext';
-import { useCampaignKPI } from '../../hooks/useGoogleAds';
+import { useCampaignKPI, useCampaigns } from '../../hooks/useGoogleAds';
 import Counter from './Counter';
 import { LoadingState } from './Loading';
 
@@ -39,9 +39,11 @@ const KPIBlock: React.FC<KPIBlockProps> = ({ title, value, suffix, prefix }) => 
 const DynamicKPIGrid: React.FC = () => {
   const { selectedCampaignId, selectedPeriod } = useCampaignContext();
   const { data: kpiData, isLoading, error } = useCampaignKPI(selectedCampaignId || '', selectedPeriod);
+  const { data: campaigns } = useCampaigns();
   
   // Récupérer les détails de la campagne pour connaître son type
-  const campaignType = "VIDEO"; // À remplacer par la vraie donnée de type de campagne
+  const selectedCampaign = campaigns?.find((c: any) => c.id === selectedCampaignId);
+  const campaignType = selectedCampaign?.type || "";
   
   if (isLoading) {
     return (

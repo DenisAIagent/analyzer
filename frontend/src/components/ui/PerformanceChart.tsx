@@ -154,13 +154,6 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
     },
   };
   
-  // Déterminer quelle métrique afficher selon le type de campagne
-  const getDefaultMetric = (type: string) => {
-    if (type === 'PERFORMANCE_MAX') return 'conversions';
-    if (type === 'VIDEO') return 'views';
-    return 'impressions';
-  };
-  
   if (isLoading) {
     return (
       <div className="bg-[#1e1e1e] rounded-lg p-6">
