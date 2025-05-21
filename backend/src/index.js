@@ -8,6 +8,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const helmet = require('helmet');
 const axios = require('axios');
+const os = require('os');
 
 // Charger les variables d'environnement
 dotenv.config();
@@ -15,6 +16,21 @@ dotenv.config();
 // Créer l'application Express
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Logs système
+const logs = [];
+function addLog(message, type = 'info') {
+  const timestamp = new Date().toISOString();
+  const log = { timestamp, message, type };
+  logs.push(log);
+  
+  // Garder seulement les 100 derniers logs
+  if (logs.length > 100) {
+    logs.shift();
+  }
+  
+  console.log(`[${timestamp}] [${type}] ${message}`);
+}
 
 // Middleware
 app.use(cors());
@@ -26,12 +42,236 @@ app.use((req, res, next) => {
   const cid = req.headers['x-google-ads-cid'];
   if (cid) {
     req.googleAdsCID = cid;
+    addLog(`Requête reçue avec CID: ${cid}`, 'info');
   }
   next();
 });
 
+// Middleware pour logger les requêtes
+app.use((req, res, next) => {
+  addLog(`${req.method} ${req.originalUrl}`, 'request');
+  next();
+});
+
+// Route d'accueil
+app.get('/', (req, res) => {
+  // Récupérer des informations système non sensibles
+  const systemInfo = {
+    hostname: os.hostname(),
+    platform: os.platform(),
+    arch: os.arch(),
+    cpus: os.cpus().length,
+    uptime: Math.floor(os.uptime() / 60) + ' minutes',
+    memory: {
+      total: Math.round(os.totalmem() / (1024 * 1024)) + ' MB',
+      free: Math.round(os.freemem() / (1024 * 1024)) + ' MB',
+    }
+  };
+  
+  // Récupérer des informations de configuration non sensibles
+  const configInfo = {
+    port: PORT,
+    nodeEnv: process.env.NODE_ENV || 'development',
+    corsOrigin: process.env.CORS_ORIGIN || '*',
+    googleAdsConfigured: !!process.env.API_GOOGLEADS,
+    openaiConfigured: !!process.env.API_OPENAI_URL,
+    geminiConfigured: !!process.env.API_GEMINI_URL,
+    serpApiConfigured: !!process.env.SERPAPI_KEY
+  };
+  
+  // Récupérer les 20 derniers logs
+  const recentLogs = logs.slice(-20);
+  
+  // Générer une page HTML
+  const html = `
+  <!DOCTYPE html>
+  <html lang="fr">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MDMC Music Ads Analyser - Backend</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      h1 {
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 10px;
+      }
+      h2 {
+        color: #2c3e50;
+        margin-top: 30px;
+      }
+      .card {
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      .status {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+      .status.ok {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .status.warning {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+      .status.error {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .log-container {
+        max-height: 400px;
+        overflow-y: auto;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        padding: 10px;
+        border: 1px solid #dee2e6;
+      }
+      .log-entry {
+        margin-bottom: 8px;
+        padding: 8px;
+        border-radius: 4px;
+      }
+      .log-info {
+        background-color: #e3f2fd;
+      }
+      .log-request {
+        background-color: #e8f5e9;
+      }
+      .log-error {
+        background-color: #ffebee;
+      }
+      .endpoints {
+        list-style-type: none;
+        padding: 0;
+      }
+      .endpoints li {
+        margin-bottom: 10px;
+        padding: 10px;
+        background-color: #e8f4f8;
+        border-radius: 4px;
+      }
+      .config-status {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+      }
+      .config-enabled {
+        background-color: #28a745;
+      }
+      .config-disabled {
+        background-color: #dc3545;
+      }
+      .refresh-button {
+        background-color: #3498db;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-top: 20px;
+      }
+      .refresh-button:hover {
+        background-color: #2980b9;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>MDMC Music Ads Analyser - Backend</h1>
+    
+    <div class="card">
+      <h2>Statut du serveur</h2>
+      <p><span class="status ok">Opérationnel</span></p>
+      <p>Démarré depuis: ${systemInfo.uptime}</p>
+      <p>Date et heure actuelles: ${new Date().toLocaleString()}</p>
+    </div>
+    
+    <div class="card">
+      <h2>Informations système</h2>
+      <p>Hostname: ${systemInfo.hostname}</p>
+      <p>Plateforme: ${systemInfo.platform} (${systemInfo.arch})</p>
+      <p>CPUs: ${systemInfo.cpus}</p>
+      <p>Mémoire: ${systemInfo.memory.free} libre sur ${systemInfo.memory.total}</p>
+    </div>
+    
+    <div class="card">
+      <h2>Configuration</h2>
+      <p>Environnement: ${configInfo.nodeEnv}</p>
+      <p>Port: ${configInfo.port}</p>
+      <p>CORS Origin: ${configInfo.corsOrigin}</p>
+      <p>APIs configurées:</p>
+      <ul>
+        <li><span class="config-status ${configInfo.googleAdsConfigured ? 'config-enabled' : 'config-disabled'}"></span> Google Ads API</li>
+        <li><span class="config-status ${configInfo.openaiConfigured ? 'config-enabled' : 'config-disabled'}"></span> OpenAI API</li>
+        <li><span class="config-status ${configInfo.geminiConfigured ? 'config-enabled' : 'config-disabled'}"></span> Gemini API</li>
+        <li><span class="config-status ${configInfo.serpApiConfigured ? 'config-enabled' : 'config-disabled'}"></span> SerpAPI (Google Trends)</li>
+      </ul>
+    </div>
+    
+    <div class="card">
+      <h2>Endpoints disponibles</h2>
+      <ul class="endpoints">
+        <li><strong>GET /api/health</strong> - Vérification de la santé du serveur</li>
+        <li><strong>GET /api/google-ads/campaigns</strong> - Liste des campagnes Google Ads</li>
+        <li><strong>GET /api/google-ads/campaign/:id/kpi</strong> - KPIs d'une campagne spécifique</li>
+        <li><strong>GET /api/openai/analyze</strong> - Analyse OpenAI</li>
+        <li><strong>GET /api/google-ai/analyze</strong> - Analyse Gemini</li>
+        <li><strong>GET /api/ai/manager/analyze</strong> - Analyse Agent Manager</li>
+        <li><strong>GET /api/ai/stratege/analyze</strong> - Analyse Agent Stratège</li>
+        <li><strong>GET /api/ai/budget/analyze</strong> - Analyse Agent Budget</li>
+        <li><strong>GET /api/ai/audience/analyze</strong> - Analyse Agent Audience</li>
+        <li><strong>GET /api/ai/concurrent/analyze</strong> - Analyse Agent Concurrent</li>
+        <li><strong>GET /api/ai/predictif/analyze</strong> - Analyse Agent Prédictif</li>
+      </ul>
+    </div>
+    
+    <div class="card">
+      <h2>Logs récents</h2>
+      <div class="log-container">
+        ${recentLogs.map(log => `
+          <div class="log-entry log-${log.type}">
+            <strong>${log.timestamp}</strong> [${log.type}] ${log.message}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    
+    <button class="refresh-button" onclick="window.location.reload()">Rafraîchir</button>
+    
+    <script>
+      // Rafraîchir automatiquement la page toutes les 30 secondes
+      setTimeout(() => {
+        window.location.reload();
+      }, 30000);
+    </script>
+  </body>
+  </html>
+  `;
+  
+  res.send(html);
+});
+
 // Route de santé
 app.get('/api/health', (req, res) => {
+  addLog('Vérification de la santé du serveur', 'info');
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -39,6 +279,7 @@ app.get('/api/health', (req, res) => {
 app.get('/api/google-ads/campaigns', async (req, res) => {
   try {
     const cid = req.googleAdsCID || '1234567890'; // CID par défaut pour le développement
+    addLog(`Récupération des campagnes pour le CID: ${cid}`, 'info');
     
     // Simuler des données de campagne pour le développement
     const mockCampaigns = [
@@ -50,6 +291,7 @@ app.get('/api/google-ads/campaigns', async (req, res) => {
     
     // Simuler un délai réseau
     setTimeout(() => {
+      addLog(`Renvoi de ${mockCampaigns.length} campagnes`, 'info');
       res.json(mockCampaigns);
     }, 500);
     
@@ -64,6 +306,7 @@ app.get('/api/google-ads/campaigns', async (req, res) => {
     res.json(response.data);
     */
   } catch (error) {
+    addLog(`Erreur lors de la récupération des campagnes: ${error.message}`, 'error');
     console.error('Erreur lors de la récupération des campagnes:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des campagnes' });
   }
@@ -74,6 +317,8 @@ app.get('/api/google-ads/campaign/:id/kpi', async (req, res) => {
     const { id } = req.params;
     const { period } = req.query;
     const cid = req.googleAdsCID || '1234567890'; // CID par défaut pour le développement
+    
+    addLog(`Récupération des KPIs pour la campagne ${id}, période ${period}, CID: ${cid}`, 'info');
     
     // Simuler des données KPI pour le développement
     let mockKPI = {};
@@ -123,6 +368,7 @@ app.get('/api/google-ads/campaign/:id/kpi', async (req, res) => {
     
     // Simuler un délai réseau
     setTimeout(() => {
+      addLog(`Renvoi des KPIs pour la campagne ${id}`, 'info');
       res.json(mockKPI);
     }, 700);
     
@@ -140,6 +386,7 @@ app.get('/api/google-ads/campaign/:id/kpi', async (req, res) => {
     res.json(response.data);
     */
   } catch (error) {
+    addLog(`Erreur lors de la récupération des KPIs: ${error.message}`, 'error');
     console.error('Erreur lors de la récupération des KPIs:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des KPIs' });
   }
@@ -150,6 +397,7 @@ app.get('/api/google-ads/campaign/:id/kpi', async (req, res) => {
 app.get('/api/openai/analyze', async (req, res) => {
   try {
     const { campaignId, period, isVideo } = req.query;
+    addLog(`Analyse OpenAI pour la campagne ${campaignId}, période ${period}`, 'info');
     
     // Simuler une analyse OpenAI pour le développement
     const mockAnalysis = {
@@ -159,6 +407,7 @@ app.get('/api/openai/analyze', async (req, res) => {
     
     // Simuler un délai réseau
     setTimeout(() => {
+      addLog(`Renvoi de l'analyse OpenAI pour la campagne ${campaignId}`, 'info');
       res.json(mockAnalysis);
     }, 1200);
     
@@ -187,6 +436,7 @@ app.get('/api/openai/analyze', async (req, res) => {
     res.json({ analysis, timestamp: new Date().toISOString() });
     */
   } catch (error) {
+    addLog(`Erreur lors de l'analyse OpenAI: ${error.message}`, 'error');
     console.error('Erreur lors de l\'analyse OpenAI:', error);
     res.status(500).json({ error: 'Erreur lors de l\'analyse OpenAI' });
   }
@@ -196,6 +446,7 @@ app.get('/api/openai/analyze', async (req, res) => {
 app.get('/api/google-ai/analyze', async (req, res) => {
   try {
     const { campaignId, period, isVideo } = req.query;
+    addLog(`Analyse Gemini pour la campagne ${campaignId}, période ${period}`, 'info');
     
     // Simuler une analyse Gemini pour le développement
     const mockAnalysis = {
@@ -205,6 +456,7 @@ app.get('/api/google-ai/analyze', async (req, res) => {
     
     // Simuler un délai réseau
     setTimeout(() => {
+      addLog(`Renvoi de l'analyse Gemini pour la campagne ${campaignId}`, 'info');
       res.json(mockAnalysis);
     }, 1000);
     
@@ -231,6 +483,7 @@ app.get('/api/google-ai/analyze', async (req, res) => {
     res.json({ analysis, timestamp: new Date().toISOString() });
     */
   } catch (error) {
+    addLog(`Erreur lors de l'analyse Gemini: ${error.message}`, 'error');
     console.error('Erreur lors de l\'analyse Gemini:', error);
     res.status(500).json({ error: 'Erreur lors de l\'analyse Gemini' });
   }
@@ -240,6 +493,7 @@ app.get('/api/google-ai/analyze', async (req, res) => {
 app.get('/api/ai/manager/analyze', async (req, res) => {
   try {
     const { campaignId, period, isVideo } = req.query;
+    addLog(`Analyse Manager pour la campagne ${campaignId}, période ${period}`, 'info');
     
     // Simuler une analyse Manager pour le développement
     let mockAnalysis = {
@@ -251,6 +505,7 @@ app.get('/api/ai/manager/analyze', async (req, res) => {
     
     // Simuler un délai réseau
     setTimeout(() => {
+      addLog(`Renvoi de l'analyse Manager pour la campagne ${campaignId}`, 'info');
       res.json(mockAnalysis);
     }, 1500);
     
@@ -290,6 +545,7 @@ app.get('/api/ai/manager/analyze', async (req, res) => {
     res.json({ analysis, timestamp: new Date().toISOString() });
     */
   } catch (error) {
+    addLog(`Erreur lors de l'analyse Manager: ${error.message}`, 'error');
     console.error('Erreur lors de l\'analyse Manager:', error);
     res.status(500).json({ error: 'Erreur lors de l\'analyse Manager' });
   }
@@ -299,6 +555,7 @@ app.get('/api/ai/manager/analyze', async (req, res) => {
 app.get('/api/ai/stratege/analyze', async (req, res) => {
   try {
     const { campaignId, period, isVideo } = req.query;
+    addLog(`Analyse Stratège pour la campagne ${campaignId}, période ${period}`, 'info');
     
     // Simuler une analyse Stratège pour le développement
     const mockAnalysis = {
@@ -308,6 +565,7 @@ app.get('/api/ai/stratege/analyze', async (req, res) => {
     
     // Simuler un délai réseau
     setTimeout(() => {
+      addLog(`Renvoi de l'analyse Stratège pour la campagne ${campaignId}`, 'info');
       res.json(mockAnalysis);
     }, 1300);
     
@@ -358,6 +616,7 @@ app.get('/api/ai/stratege/analyze', async (req, res) => {
     res.json({ analysis, timestamp: new Date().toISOString() });
     */
   } catch (error) {
+    addLog(`Erreur lors de l'analyse Stratège: ${error.message}`, 'error');
     console.error('Erreur lors de l\'analyse Stratège:', error);
     res.status(500).json({ error: 'Erreur lors de l\'analyse Stratège' });
   }
@@ -367,6 +626,7 @@ app.get('/api/ai/stratege/analyze', async (req, res) => {
 app.get('/api/ai/budget/analyze', async (req, res) => {
   try {
     const { campaignId, period, isVideo } = req.query;
+    addLog(`Analyse Budget pour la campagne ${campaignId}, période ${period}`, 'info');
     
     // Simuler une analyse Budget pour le développement
     const mockAnalysis = {
@@ -376,6 +636,7 @@ app.get('/api/ai/budget/analyze', async (req, res) => {
     
     // Simuler un délai réseau
     setTimeout(() => {
+      addLog(`Renvoi de l'analyse Budget pour la campagne ${campaignId}`, 'info');
       res.json(mockAnalysis);
     }, 900);
     
@@ -416,6 +677,7 @@ app.get('/api/ai/budget/analyze', async (req, res) => {
     res.json({ analysis, timestamp: new Date().toISOString() });
     */
   } catch (error) {
+    addLog(`Erreur lors de l'analyse Budget: ${error.message}`, 'error');
     console.error('Erreur lors de l\'analyse Budget:', error);
     res.status(500).json({ error: 'Erreur lors de l\'analyse Budget' });
   }
@@ -425,15 +687,17 @@ app.get('/api/ai/budget/analyze', async (req, res) => {
 app.get('/api/ai/audience/analyze', async (req, res) => {
   try {
     const { campaignId, period, isVideo } = req.query;
+    addLog(`Analyse Audience pour la campagne ${campaignId}, période ${period}`, 'info');
     
     // Simuler une analyse Audience pour le développement
     const mockAnalysis = {
-      analysis: "Analyse d'audience : Le segment 25-34 ans urbain montre un taux d'engagement 40% supérieur à la moyenne. Opportunité d'expansion vers des segments similaires dans de nouvelles zones géographiques. Recommandation de créer des variantes de campagne ciblant spécifiquement ce segment avec un contenu adapté.",
+      analysis: "Analyse d'audience : Le segment 25-34 ans urbain montre un taux d'engagement 40% supérieur à la moyenne. Opportunité d'expansion vers des segments similaires dans de nouvelles zones géographiques. Recommandation de créer des variantes de campagne ciblant spécifiquement ce segment démographique.",
       timestamp: new Date().toISOString()
     };
     
     // Simuler un délai réseau
     setTimeout(() => {
+      addLog(`Renvoi de l'analyse Audience pour la campagne ${campaignId}`, 'info');
       res.json(mockAnalysis);
     }, 1100);
     
@@ -456,11 +720,11 @@ app.get('/api/ai/audience/analyze', async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "Tu es un expert en analyse d'audience et segmentation pour les campagnes publicitaires digitales."
+          content: "Tu es un expert en analyse d'audience et segmentation pour les campagnes marketing."
         },
         {
           role: "user",
-          content: `Analyse les données d'audience suivantes pour la campagne ${campaignId}:\n\nDonnées d'audience: ${JSON.stringify(audienceResponse.data)}\n\nIdentifie les segments les plus performants et fournis des recommandations pour optimiser le ciblage.`
+          content: `Analyse les données d'audience suivantes pour la campagne ${campaignId}:\n\nDonnées d'audience: ${JSON.stringify(audienceResponse.data)}\n\nFournis une analyse des segments les plus performants avec des recommandations d'optimisation.`
         }
       ]
     }, {
@@ -474,6 +738,7 @@ app.get('/api/ai/audience/analyze', async (req, res) => {
     res.json({ analysis, timestamp: new Date().toISOString() });
     */
   } catch (error) {
+    addLog(`Erreur lors de l'analyse Audience: ${error.message}`, 'error');
     console.error('Erreur lors de l\'analyse Audience:', error);
     res.status(500).json({ error: 'Erreur lors de l\'analyse Audience' });
   }
@@ -483,15 +748,17 @@ app.get('/api/ai/audience/analyze', async (req, res) => {
 app.get('/api/ai/concurrent/analyze', async (req, res) => {
   try {
     const { campaignId, period, isVideo } = req.query;
+    addLog(`Analyse Concurrent pour la campagne ${campaignId}, période ${period}`, 'info');
     
     // Simuler une analyse Concurrent pour le développement
     const mockAnalysis = {
-      analysis: "Analyse concurrentielle : Votre part de voix a augmenté de 5% ce mois-ci, mais les concurrents investissent davantage dans les formats vidéo courts. Recommandation de renforcer votre présence sur ces formats pour maintenir votre avantage et d'explorer les plateformes émergentes où la concurrence est moins intense.",
+      analysis: "Analyse concurrentielle : Votre part de voix a augmenté de 5% ce mois-ci, mais les concurrents investissent davantage dans les formats vidéo courts. Recommandation de renforcer votre présence sur ces formats pour maintenir votre avantage et d'explorer les opportunités sur les plateformes émergentes où la concurrence est moins intense.",
       timestamp: new Date().toISOString()
     };
     
     // Simuler un délai réseau
     setTimeout(() => {
+      addLog(`Renvoi de l'analyse Concurrent pour la campagne ${campaignId}`, 'info');
       res.json(mockAnalysis);
     }, 1200);
     
@@ -514,11 +781,11 @@ app.get('/api/ai/concurrent/analyze', async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "Tu es un expert en analyse concurrentielle pour les campagnes publicitaires digitales."
+          content: "Tu es un expert en analyse concurrentielle pour les campagnes marketing digitales."
         },
         {
           role: "user",
-          content: `Analyse les données concurrentielles suivantes pour la campagne ${campaignId}:\n\nDonnées concurrentielles: ${JSON.stringify(competitorResponse.data)}\n\nIdentifie les forces et faiblesses par rapport à la concurrence et fournis des recommandations stratégiques.`
+          content: `Analyse les données concurrentielles suivantes pour la campagne ${campaignId}:\n\nDonnées concurrentielles: ${JSON.stringify(competitorResponse.data)}\n\nFournis une analyse de la position concurrentielle avec des recommandations stratégiques.`
         }
       ]
     }, {
@@ -532,6 +799,7 @@ app.get('/api/ai/concurrent/analyze', async (req, res) => {
     res.json({ analysis, timestamp: new Date().toISOString() });
     */
   } catch (error) {
+    addLog(`Erreur lors de l'analyse Concurrent: ${error.message}`, 'error');
     console.error('Erreur lors de l\'analyse Concurrent:', error);
     res.status(500).json({ error: 'Erreur lors de l\'analyse Concurrent' });
   }
@@ -541,15 +809,17 @@ app.get('/api/ai/concurrent/analyze', async (req, res) => {
 app.get('/api/ai/predictif/analyze', async (req, res) => {
   try {
     const { campaignId, period, isVideo } = req.query;
+    addLog(`Analyse Prédictive pour la campagne ${campaignId}, période ${period}`, 'info');
     
-    // Simuler une analyse Prédictif pour le développement
+    // Simuler une analyse Prédictive pour le développement
     const mockAnalysis = {
-      analysis: "Prévisions : Selon nos modèles, une augmentation de 10% du budget pourrait générer 18% de conversions supplémentaires au cours du prochain trimestre, avec un ROAS stable. Recommandation d'augmenter progressivement les investissements et de surveiller les indicateurs clés de performance hebdomadaires pour ajuster la stratégie.",
+      analysis: "Prévisions : Selon nos modèles, une augmentation de 10% du budget pourrait générer 18% de conversions supplémentaires au cours du prochain trimestre, avec un ROAS stable. Recommandation d'augmenter progressivement les investissements et de surveiller les indicateurs clés de performance hebdomadairement pour ajuster la stratégie.",
       timestamp: new Date().toISOString()
     };
     
     // Simuler un délai réseau
     setTimeout(() => {
+      addLog(`Renvoi de l'analyse Prédictive pour la campagne ${campaignId}`, 'info');
       res.json(mockAnalysis);
     }, 1400);
     
@@ -562,7 +832,7 @@ app.get('/api/ai/predictif/analyze', async (req, res) => {
         'developer-token': process.env.GOOGLE_ADS_DEVELOPER_TOKEN
       },
       params: {
-        period: 'LAST_90_DAYS'
+        period: '90d' // Données des 90 derniers jours pour les prévisions
       }
     });
     
@@ -572,11 +842,11 @@ app.get('/api/ai/predictif/analyze', async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "Tu es un expert en analyse prédictive pour les campagnes publicitaires digitales."
+          content: "Tu es un expert en analyse prédictive pour les campagnes marketing digitales."
         },
         {
           role: "user",
-          content: `Analyse les données historiques suivantes pour la campagne ${campaignId} et génère des prévisions pour les 90 prochains jours:\n\nDonnées historiques: ${JSON.stringify(historicalResponse.data)}\n\nFournis des prévisions détaillées et des recommandations stratégiques basées sur ces prévisions.`
+          content: `Analyse les données historiques suivantes pour la campagne ${campaignId} et génère des prévisions pour les 90 prochains jours:\n\nDonnées historiques: ${JSON.stringify(historicalResponse.data)}\n\nFournis des prévisions de performance et des recommandations d'optimisation.`
         }
       ]
     }, {
@@ -590,14 +860,14 @@ app.get('/api/ai/predictif/analyze', async (req, res) => {
     res.json({ analysis, timestamp: new Date().toISOString() });
     */
   } catch (error) {
-    console.error('Erreur lors de l\'analyse Prédictif:', error);
-    res.status(500).json({ error: 'Erreur lors de l\'analyse Prédictif' });
+    addLog(`Erreur lors de l'analyse Prédictive: ${error.message}`, 'error');
+    console.error('Erreur lors de l\'analyse Prédictive:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'analyse Prédictive' });
   }
 });
 
 // Démarrer le serveur
 app.listen(PORT, () => {
+  addLog(`Serveur démarré sur le port ${PORT}`, 'info');
   console.log(`Serveur démarré sur le port ${PORT}`);
 });
-
-module.exports = app;
