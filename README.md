@@ -22,6 +22,7 @@ Ce dépôt est organisé en deux parties principales :
   - Agent Prédictif (prévisions)
 - **Interface moderne** : Design sombre avec effets UX avancés
 - **Métriques YouTube** : Vues, likes, abonnements et ajouts aux playlists pour les campagnes vidéo
+- **Page d'accueil backend avec monitoring** : Visualisation en temps réel du statut du serveur et des logs
 
 ## Installation et déploiement
 
@@ -96,6 +97,12 @@ NODE_ENV=production
 CORS_ORIGIN="https://votre-frontend-url.com"
 ```
 3. Lancez avec `npm start`
+4. **Accès au monitoring** : Une fois déployé, accédez à la racine de votre backend (https://votre-backend-url.com/) pour voir la page de monitoring avec :
+   - Statut du serveur
+   - Informations système
+   - Configuration (sans les valeurs sensibles)
+   - Liste des endpoints disponibles
+   - Logs récents en temps réel
 
 ### Frontend
 
@@ -121,6 +128,7 @@ Pour déployer cette application sur Railway, suivez ces étapes spécifiques :
    - Créez un nouveau service en pointant vers le dossier `/backend`
    - Configurez toutes les variables d'environnement mentionnées ci-dessus
    - Utilisez la commande de démarrage `npm start`
+   - Après déploiement, visitez l'URL racine du service pour accéder à la page de monitoring
 
 2. **Frontend** :
    - Créez un nouveau service en pointant vers le dossier `/frontend`
@@ -133,6 +141,19 @@ Pour déployer cette application sur Railway, suivez ces étapes spécifiques :
 2. Saisissez un CID Google Ads dans le sélecteur en haut à droite
 3. Sélectionnez une campagne dans le menu déroulant
 4. Explorez les analyses fournies par les différents agents IA
+5. Pour vérifier l'état du backend, accédez directement à son URL racine
+
+## Monitoring et débogage
+
+La page d'accueil du backend offre plusieurs fonctionnalités pour faciliter le monitoring et le débogage :
+
+- **Statut du serveur** : Vérifiez rapidement si le backend est opérationnel
+- **Informations système** : Consultez les ressources utilisées (CPU, mémoire)
+- **Configuration** : Vérifiez quelles APIs sont correctement configurées
+- **Endpoints disponibles** : Liste complète des routes API avec leur description
+- **Logs récents** : Visualisez les 20 derniers logs du serveur avec rafraîchissement automatique
+
+Cette page se rafraîchit automatiquement toutes les 30 secondes pour afficher les informations les plus récentes.
 
 ## Architecture technique
 
@@ -144,3 +165,5 @@ Pour déployer cette application sur Railway, suivez ces étapes spécifiques :
 
 - **Les boutons et sélecteurs ne fonctionnent pas** : Vérifiez que la variable d'environnement `VITE_BACKEND_URL` est correctement configurée dans votre déploiement frontend et qu'elle pointe vers l'URL complète de votre backend.
 - **Erreur "No QueryClient set"** : Cette erreur est résolue dans la dernière version. Si elle persiste, vérifiez que vous utilisez la dernière version du code.
+- **Erreur "Cannot GET /"** : Cette erreur ne devrait plus apparaître. La racine du backend affiche désormais une page de monitoring. Si vous voyez encore cette erreur, vérifiez que vous utilisez la dernière version du code.
+- **Logs d'erreur sur la page de monitoring** : Consultez les logs affichés sur la page d'accueil du backend pour identifier les problèmes potentiels avec les APIs externes ou la configuration.
